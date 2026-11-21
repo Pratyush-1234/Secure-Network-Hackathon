@@ -1,0 +1,15 @@
+# Shield Wall ModSecurity include order (replaces the image's setup.conf.template).
+#  1. engine settings (rendered from MODSEC_* env)   2. local overrides
+#  3. CRS setup                                      4. exclusions BEFORE CRS (tuning)
+#  5. CRS rules                                      6. Shield Wall custom rules / virtual patches
+#  7. exclusions AFTER CRS
+Include /etc/modsecurity.d/modsecurity.conf
+Include /etc/modsecurity.d/modsecurity-override.conf
+
+Include /etc/modsecurity.d/owasp-crs/crs-setup.conf
+Include /etc/modsecurity.d/shieldwall/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf
+
+Include /etc/modsecurity.d/owasp-crs/rules/*.conf
+
+Include /etc/modsecurity.d/shieldwall/SHIELDWALL-CUSTOM-RULES.conf
+Include /etc/modsecurity.d/shieldwall/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf

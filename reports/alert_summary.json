@@ -1,0 +1,235 @@
+{
+  "totals": {
+    "events_total": 703,
+    "proxy_requests": 430,
+    "allowed": 162,
+    "blocked_waf_403": 171,
+    "rate_limited_429": 97,
+    "blocked_edge_404": 0,
+    "waf_alerts": 171,
+    "waf_blocked_transactions": 171,
+    "waf_outbound_detections": 0,
+    "fail2ban_bans": 3,
+    "banned_ips": [
+      "10.66.10.66"
+    ],
+    "blocked_total": 268
+  },
+  "by_attack_type": [
+    {
+      "attack_type": "SQL Injection",
+      "blocked": 113,
+      "detected_only": 0,
+      "ip_bans": 0,
+      "unique_sources": 1,
+      "sources": "10.66.10.66",
+      "mitre_attack": "T1190",
+      "cwe": "CWE-89",
+      "capec": "CAPEC-66",
+      "top_rules": "942100, 942400, 942410, 942150",
+      "first_seen": "2026-11-21T06:10:55+00:00",
+      "last_seen": "2026-11-21T06:14:01+00:00"
+    },
+    {
+      "attack_type": "Flood / Rate Limit",
+      "blocked": 74,
+      "detected_only": 0,
+      "ip_bans": 0,
+      "unique_sources": 1,
+      "sources": "10.66.10.66",
+      "mitre_attack": "T1499",
+      "cwe": "CWE-770",
+      "capec": "CAPEC-125",
+      "top_rules": "nginx:limit_req",
+      "first_seen": "2026-11-21T06:13:36+00:00",
+      "last_seen": "2026-11-21T06:13:36+00:00"
+    },
+    {
+      "attack_type": "Command Injection",
+      "blocked": 18,
+      "detected_only": 0,
+      "ip_bans": 0,
+      "unique_sources": 1,
+      "sources": "10.66.10.66",
+      "mitre_attack": "T1190",
+      "cwe": "CWE-78",
+      "capec": "CAPEC-88",
+      "top_rules": "932236, 932160, 930120, 10100",
+      "first_seen": "2026-11-21T06:10:55+00:00",
+      "last_seen": "2026-11-21T06:13:58+00:00"
+    },
+    {
+      "attack_type": "Brute Force / Rate Limit",
+      "blocked": 16,
+      "detected_only": 0,
+      "ip_bans": 2,
+      "unique_sources": 1,
+      "sources": "10.66.10.66",
+      "mitre_attack": "T1110.001",
+      "cwe": "CWE-307",
+      "capec": "CAPEC-49",
+      "top_rules": "nginx:limit_req, fail2ban:ban",
+      "first_seen": "2026-11-21T06:10:58+00:00",
+      "last_seen": "2026-11-21T06:13:45+00:00"
+    },
+    {
+      "attack_type": "Cross-Site Scripting",
+      "blocked": 14,
+      "detected_only": 0,
+      "ip_bans": 0,
+      "unique_sources": 1,
+      "sources": "10.66.10.66",
+      "mitre_attack": "T1190",
+      "cwe": "CWE-79",
+      "capec": "CAPEC-63",
+      "top_rules": "941100, 941390, 941160, 941320",
+      "first_seen": "2026-11-21T06:10:55+00:00",
+      "last_seen": "2026-11-21T06:13:57+00:00"
+    },
+    {
+      "attack_type": "Scanner / Recon",
+      "blocked": 14,
+      "detected_only": 0,
+      "ip_bans": 0,
+      "unique_sources": 1,
+      "sources": "10.66.10.66",
+      "mitre_attack": "T1595.002",
+      "cwe": "-",
+      "capec": "CAPEC-541",
+      "top_rules": "913100, 10200, 932239",
+      "first_seen": "2026-11-21T06:10:56+00:00",
+      "last_seen": "2026-11-21T06:13:58+00:00"
+    },
+    {
+      "attack_type": "Path Traversal / File Inclusion",
+      "blocked": 12,
+      "detected_only": 0,
+      "ip_bans": 0,
+      "unique_sources": 1,
+      "sources": "10.66.10.66",
+      "mitre_attack": "T1190",
+      "cwe": "CWE-22",
+      "capec": "CAPEC-126",
+      "top_rules": "930110, 930120, 930100, 932160",
+      "first_seen": "2026-11-21T06:10:55+00:00",
+      "last_seen": "2026-11-21T06:13:57+00:00"
+    },
+    {
+      "attack_type": "Automated attack (repeated WAF blocks)",
+      "blocked": 0,
+      "detected_only": 0,
+      "ip_bans": 1,
+      "unique_sources": 1,
+      "sources": "10.66.10.66",
+      "mitre_attack": "T1595.002 / T1190",
+      "cwe": "-",
+      "capec": "-",
+      "top_rules": "fail2ban:ban",
+      "first_seen": "2026-11-21T06:14:01+00:00",
+      "last_seen": "2026-11-21T06:14:01+00:00"
+    }
+  ],
+  "benign_false_positives": 0,
+  "top_rules": [
+    {
+      "id": "942100",
+      "msg": "SQL Injection Attack Detected via libinjection",
+      "hits": 104
+    },
+    {
+      "id": "942400",
+      "msg": "SQL Injection Attack",
+      "hits": 58
+    },
+    {
+      "id": "942410",
+      "msg": "SQL Injection Attack",
+      "hits": 52
+    },
+    {
+      "id": "942150",
+      "msg": "SQL Injection Attack: SQL function name detected",
+      "hits": 45
+    },
+    {
+      "id": "942520",
+      "msg": "Detects basic SQL authentication bypass attempts 4.0/4",
+      "hits": 43
+    },
+    {
+      "id": "942180",
+      "msg": "Detects basic SQL authentication bypass attempts 1/3",
+      "hits": 41
+    },
+    {
+      "id": "942430",
+      "msg": "Restricted SQL Character Anomaly Detection (args): # of special characters exceeded (12)",
+      "hits": 38
+    },
+    {
+      "id": "942130",
+      "msg": "SQL Injection Attack: SQL Boolean-based attack detected",
+      "hits": 37
+    },
+    {
+      "id": "932240",
+      "msg": "Remote Command Execution: Unix Command Injection evasion attempt detected",
+      "hits": 37
+    },
+    {
+      "id": "942340",
+      "msg": "Detects basic SQL authentication bypass attempts 3/3",
+      "hits": 37
+    },
+    {
+      "id": "942300",
+      "msg": "Detects MySQL comments, conditions and ch(a)r injections",
+      "hits": 36
+    },
+    {
+      "id": "942310",
+      "msg": "Detects chained SQL injection attempts 2/2",
+      "hits": 36
+    },
+    {
+      "id": "942440",
+      "msg": "SQL Comment Sequence Detected",
+      "hits": 34
+    },
+    {
+      "id": "942380",
+      "msg": "SQL Injection Attack",
+      "hits": 34
+    },
+    {
+      "id": "942200",
+      "msg": "Detects MySQL comment-/space-obfuscated injections and backtick termination",
+      "hits": 32
+    },
+    {
+      "id": "942120",
+      "msg": "SQL Injection Attack: SQL Operator Detected",
+      "hits": 25
+    },
+    {
+      "id": "942260",
+      "msg": "Detects basic SQL authentication bypass attempts 2/3",
+      "hits": 24
+    },
+    {
+      "id": "942230",
+      "msg": "Detects conditional SQL injection attempts",
+      "hits": 24
+    },
+    {
+      "id": "942160",
+      "msg": "Detects blind sqli tests using sleep() or benchmark()",
+      "hits": 23
+    },
+    {
+      "id": "942210",
+      "msg": "Detects chained SQL injection attempts 1/2",
+      "hits": 21
+    }
+  ]
+}

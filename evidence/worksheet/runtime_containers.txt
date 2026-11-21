@@ -1,0 +1,69 @@
+$ docker compose ps --format "table {{.Service}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+SERVICE       IMAGE                                                                     STATUS                       PORTS
+attacker      sha256:624cae58f23cc04ff617ee17078ee9c69161b33e73f9b30199e54dabbb1fca9a   Up About an hour             
+client        sha256:624cae58f23cc04ff617ee17078ee9c69161b33e73f9b30199e54dabbb1fca9a   Up About an hour             
+db            mariadb:10.11                                                             Up About an hour (healthy)   3306/tcp
+dvwa          ghcr.io/digininja/dvwa:latest                                             Up 3 minutes (healthy)       80/tcp
+dvwa-direct   shieldwall-tools:1.0                                                      Up 26 minutes                127.0.0.1:8081->8081/tcp
+fail2ban      crazymax/fail2ban:1.1.1                                                   Up 45 seconds (healthy)      
+vector        timberio/vector:0.62.0-alpine                                             Up 45 seconds                
+waf           owasp/modsecurity-crs:4.30.0-nginx-202611160811                           Up 51 seconds (healthy)      127.0.0.1:9080->9080/tcp, 8080/tcp, 127.0.0.1:9443->9443/tcp
+
+$ docker port shieldwall-waf-1
+9080/tcp -> 127.0.0.1:9080
+9443/tcp -> 127.0.0.1:9443
+
+$ docker port shieldwall-dvwa-1   (empty = nothing published)
+(exit 0)
+
+$ docker inspect <container> networks
+waf       shieldwall_backend=10.66.20.10 shieldwall_frontend=10.66.10.10 shieldwall_backend
+
+dvwa      shieldwall_backend=10.66.20.20 shieldwall_backend
+
+db        shieldwall_backend=10.66.20.30 shieldwall_backend
+
+attacker  shieldwall_frontend=10.66.10.66 shieldwall_frontend
+
+client    shieldwall_frontend=10.66.10.20 shieldwall_frontend
+
+fail2ban  container:af4e2b691385ee44e480353d2b639902eb0f17b446ae2229bb9b9bb0f0bc37f5
+
+vector    none=invalid IP (network_mode none)none
+
+
+$ docker network inspect shieldwall_backend --format "internal={{.Internal}}"
+internal=true subnet=10.66.20.0/24
+frontend internal=false subnet=10.66.10.0/24
+
+$ ss -ltn | grep 9443/9080 (host listeners)
+LISTEN 0      4096       127.0.0.1:8081       0.0.0.0:*          
+LISTEN 0      4096       127.0.0.1:9080       0.0.0.0:*          
+LISTEN 0      4096       127.0.0.1:9443       0.0.0.0:*          
+
+$ from attacker: direct to dvwa 10.66.20.20:80
+HTTP 000
+curl exit 28
+
+$ docker inspect restart policies
+db        unless-stopped
+dvwa      unless-stopped
+waf       unless-stopped
+fail2ban  unless-stopped
+vector    unless-stopped
+attacker  no
+client    no
+
+### after: make unprotected-down (default secure state)
+SERVICE    PORTS
+attacker   
+client     
+db         3306/tcp
+dvwa       80/tcp
+fail2ban   
+vector     
+waf        127.0.0.1:9080->9080/tcp, 8080/tcp, 127.0.0.1:9443->9443/tcp
+
+LISTEN 0      4096       127.0.0.1:9080       0.0.0.0:*          
+LISTEN 0      4096       127.0.0.1:9443       0.0.0.0:*          
+host -> 127.0.0.1:8081 : HTTP 000

@@ -1,0 +1,204 @@
+# =====================================================================
+# PS6 Shield Wall: protecting a public-facing legacy application
+#
+#   attacker 10.66.10.66 ─┐                               ┌─ dvwa 10.66.20.20 ── db 10.66.20.30
+#   client   10.66.10.20 ─┼─► waf 10.66.10.10 / 10.66.20.10┤   (backend: internal, no host ports)
+#   host 127.0.0.1:9443 ──┘   nginx + ModSecurity v3 + CRS v4, TLS
+#                             fail2ban (shares WAF netns) · vector (log centralization)
+# =====================================================================
+name: shieldwall
+
+x-tools: &tools
+  build: ./tools
+  image: shieldwall-tools:1.0
+  init: true
+  volumes:
+    - ./scripts:/work/scripts:ro
+    - ./evidence:/work/evidence
+    - ./reports:/work/reports
+    - ./logs:/work/logs:ro
+    - ./certs/ca.crt:/work/certs/ca.crt:ro
+  extra_hosts:
+    - "shieldwall.local:10.66.10.10"
+
+services:
+  # ------------------------------------------------------------------ app tier
+  db:
+    image: mariadb:10.11
+    environment:
+      MARIADB_ROOT_PASSWORD: "lab-root-only"
+      MARIADB_DATABASE: dvwa
+      MARIADB_USER: dvwa
+      MARIADB_PASSWORD: "p@ssw0rd"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks:
+      backend:
+        ipv4_address: 10.66.20.30
+    restart: unless-stopped
+
+  dvwa:
+    # Intentionally vulnerable legacy app (the official DVWA image, from the digininja/DVWA repo)
+    # upstream publishes only :latest, so it is pinned by digest to the exact build we tested (2026-11-17)
+    image: ghcr.io/digininja/dvwa:latest@sha256:61167ec23fbf861f7d96a7beb4be3612d043d48dbc6b239d4f90d7e8cdff8115
+    environment:
+      DB_SERVER: db
+      DEFAULT_SECURITY_LEVEL: low     # "cannot be patched this week": the app stays fully vulnerable
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost/login.php"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks:
+      backend:
+        ipv4_address: 10.66.20.20
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------ edge
+  waf:
+    image: owasp/modsecurity-crs:4.30.0-nginx-202611160811
+    environment:
+      # nginx
+      SERVER_NAME: "shieldwall.local localhost waf"
+      PORT: "${HTTP_PORT:-9080}"
+      SSL_PORT: "${HTTPS_PORT:-9443}"
+      PUBLIC_HTTPS_PORT: "${HTTPS_PORT:-9443}"
+      BACKEND_HOSTPORT: "dvwa:80"
+      SSL_CERT_FILE: /etc/nginx/certs/server.crt
+      SSL_CERT_KEY_FILE: /etc/nginx/certs/server.key
+      ACCESSLOG: /var/log/shieldwall/nginx/access.json
+      ERRORLOG: /var/log/shieldwall/nginx/error.log
+      LOGLEVEL: warn
+      # ModSecurity engine
+      MODSEC_RULE_ENGINE: "On"
+      MODSEC_AUDIT_ENGINE: RelevantOnly
+      MODSEC_AUDIT_LOG: /var/log/shieldwall/modsec/audit.json
+      MODSEC_AUDIT_LOG_FORMAT: JSON
+      MODSEC_AUDIT_LOG_TYPE: Serial
+      MODSEC_AUDIT_LOG_PARTS: ABIFHZ
+      MODSEC_AUDIT_LOG_RELEVANT_STATUS: "^(?:5|4(?!04))"
+      # OWASP CRS
+      BLOCKING_PARANOIA: "${PARANOIA:-1}"
+      DETECTION_PARANOIA: "${PARANOIA:-1}"
+      ANOMALY_INBOUND: "5"
+      ANOMALY_OUTBOUND: "4"
+    volumes:
+      - ./waf/nginx/default.conf.template:/etc/nginx/templates/conf.d/default.conf.template:ro
+      - ./waf/nginx/logging.conf.template:/etc/nginx/templates/conf.d/logging.conf.template:ro
+      - ./waf/nginx/shieldwall_proxy.conf:/etc/nginx/shieldwall/shieldwall_proxy.conf:ro
+      - ./waf/modsec/setup.conf.template:/etc/nginx/templates/modsecurity.d/setup.conf.template:ro
+      - ./waf/modsec/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf:/etc/modsecurity.d/shieldwall/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf:ro
+      - ./waf/modsec/SHIELDWALL-CUSTOM-RULES.conf:/etc/modsecurity.d/shieldwall/SHIELDWALL-CUSTOM-RULES.conf:ro
+      - ./waf/modsec/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf:/etc/modsecurity.d/shieldwall/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf:ro
+      - ./certs/server.crt:/etc/nginx/certs/server.crt:ro
+      - ./certs/server.key:/etc/nginx/certs/server.key:ro
+      - ./logs/nginx:/var/log/shieldwall/nginx
+      - ./logs/modsec:/var/log/shieldwall/modsec
+    ports:
+      - "127.0.0.1:${HTTP_PORT:-9080}:${HTTP_PORT:-9080}"
+      - "127.0.0.1:${HTTPS_PORT:-9443}:${HTTPS_PORT:-9443}"
+    depends_on:
+      dvwa:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsk", "-o", "/dev/null", "https://localhost:${HTTPS_PORT:-9443}/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks:
+      frontend:
+        ipv4_address: 10.66.10.10
+      backend:
+        ipv4_address: 10.66.20.10
+    restart: unless-stopped
+
+  fail2ban:
+    # Automatic blocking. It shares the WAF's network namespace, so its iptables
+    # bans apply only to traffic reaching the WAF and never touch the host firewall.
+    image: crazymax/fail2ban:1.1.1
+    network_mode: "service:waf"
+    cap_add: [NET_ADMIN, NET_RAW]
+    environment:
+      TZ: UTC
+      F2B_LOG_TARGET: /var/log/fail2ban/fail2ban.log
+      F2B_LOG_LEVEL: INFO
+      F2B_DB_PURGE_AGE: 1d
+    volumes:
+      - ./fail2ban:/data
+      - ./logs/nginx:/var/log/shieldwall/nginx:ro
+      - ./logs/fail2ban:/var/log/fail2ban
+    depends_on:
+      waf:
+        condition: service_healthy
+    restart: unless-stopped
+
+  vector:
+    # Log centralization: nginx access + error, ModSecurity audit and fail2ban
+    # all go to one normalized NDJSON stream at logs/central/events.ndjson
+    image: timberio/vector:0.62.0-alpine
+    command: ["--config", "/etc/vector/vector.yaml"]
+    volumes:
+      - ./vector/vector.yaml:/etc/vector/vector.yaml:ro
+      - ./logs:/logs
+    depends_on:
+      waf:
+        condition: service_healthy
+    network_mode: "none"
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------ traffic generators
+  attacker:
+    <<: *tools
+    networks:
+      frontend:
+        ipv4_address: 10.66.10.66
+
+  client:
+    <<: *tools
+    networks:
+      frontend:
+        ipv4_address: 10.66.10.20
+
+  # Baseline only: the same attacker placed directly on the app network (no WAF in the way)
+  attacker-direct:
+    <<: *tools
+    profiles: ["baseline"]
+    networks:
+      backend:
+        ipv4_address: 10.66.20.66
+
+  # DEMO ONLY ("before" view in a browser): a plain TCP pass-through to DVWA with
+  # NO WAF, NO TLS, NO rate limit. Start: make unprotected-up. Stop: make unprotected-down
+  dvwa-direct:
+    image: shieldwall-tools:1.0
+    profiles: ["unprotected"]
+    command: ["python3", "-u", "/work/scripts/tcp_forward.py", "8081", "dvwa", "80"]
+    volumes:
+      - ./scripts:/work/scripts:ro
+    ports:
+      - "127.0.0.1:${UNPROTECTED_PORT:-8081}:8081"
+    depends_on:
+      dvwa:
+        condition: service_healthy
+    networks:
+      frontend:
+        ipv4_address: 10.66.10.99
+      backend:
+        ipv4_address: 10.66.20.99
+
+networks:
+  frontend:
+    driver: bridge
+    ipam:
+      config: [{subnet: 10.66.10.0/24}]
+  backend:
+    driver: bridge
+    internal: true
+    ipam:
+      config: [{subnet: 10.66.20.0/24}]

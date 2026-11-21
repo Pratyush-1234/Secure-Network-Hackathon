@@ -1,0 +1,102 @@
+### /etc/nginx/nginx.conf (module load)
+1:load_module modules/ngx_http_modsecurity_module.so;
+3:load_module modules/ngx_http_headers_more_filter_module.so;
+
+### /etc/nginx/conf.d/modsecurity.conf
+     1	modsecurity on;
+     2	modsecurity_rules_file /etc/modsecurity.d/setup.conf;
+
+### /etc/modsecurity.d/modsecurity.conf (engine + audit)
+5:SecRuleEngine On
+6:SecRequestBodyAccess on
+14:SecResponseBodyAccess on
+20:SecAuditEngine RelevantOnly
+21:SecAuditLogRelevantStatus "^(?:5|4(?!04))"
+22:SecAuditLogParts ABIFHZ
+23:SecAuditLogType Serial
+24:SecAuditLog /var/log/shieldwall/modsec/audit.json
+31:SecAuditLogFormat JSON
+
+### rendered setup.conf include order
+6:Include /etc/modsecurity.d/modsecurity.conf
+7:Include /etc/modsecurity.d/modsecurity-override.conf
+9:Include /etc/modsecurity.d/owasp-crs/crs-setup.conf
+10:Include /etc/modsecurity.d/shieldwall/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf
+12:Include /etc/modsecurity.d/owasp-crs/rules/*.conf
+14:Include /etc/modsecurity.d/shieldwall/SHIELDWALL-CUSTOM-RULES.conf
+15:Include /etc/modsecurity.d/shieldwall/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf
+
+### crs-setup.conf active (uncommented) settings
+97:SecDefaultAction "phase:1,pass,log,tag:'modsecurity'"
+98:SecDefaultAction "phase:2,pass,log,tag:'modsecurity'"
+99:SecDefaultAction "phase:3,log,auditlog,pass"
+100:SecDefaultAction "phase:4,log,auditlog,pass"
+101:SecDefaultAction "phase:5,log,auditlog,pass"
+183:SecAction \
+184:    "id:900000,\
+191:    setvar:tx.blocking_paranoia_level=2"
+211:SecAction \
+212:    "id:900001,\
+219:    setvar:tx.detection_paranoia_level=2"
+333:SecAction \
+334:    "id:900110,\
+341:    setvar:tx.inbound_anomaly_score_threshold=5,\
+342:    setvar:tx.outbound_anomaly_score_threshold=4"
+947:SecAction \
+948:    "id:900990,\
+955:    setvar:tx.crs_setup_version=4300"
+
+### CRS version evidence
+ver:'OWASP_CRS/4.30.0
+# OWASP CRS ver.4.30.0
+# The CRS checks the tx.crs_setup_version variable to ensure that the setup
+
+### blocking evaluation rules
+226:    "id:949110,\
+227-    phase:2,\
+228-    deny,\
+230-    msg:'Inbound Anomaly Score Exceeded (Total Score: %{TX.BLOCKING_INBOUND_ANOMALY_SCORE})',\
+235-SecRule TX:DETECTION_PARANOIA_LEVEL "@lt 1" "id:949011,phase:1,pass,nolog,tag:'OWASP_CRS',ver:'OWASP_CRS/4.30.0',skipAfter:END-REQUEST-949-BLOCKING-EVALUATION"
+236-SecRule TX:DETECTION_PARANOIA_LEVEL "@lt 1" "id:949012,phase:2,pass,nolog,tag:'OWASP_CRS',ver:'OWASP_CRS/4.30.0',skipAfter:END-REQUEST-949-BLOCKING-EVALUATION"
+238:    "id:959100,\
+239-    phase:4,\
+240-    deny,\
+242-    msg:'Outbound Anomaly Score Exceeded (Total Score: %{tx.blocking_outbound_anomaly_score})',\
+247-SecRule TX:DETECTION_PARANOIA_LEVEL "@lt 1" "id:959011,phase:3,pass,nolog,tag:'OWASP_CRS',ver:'OWASP_CRS/4.30.0',skipAfter:END-RESPONSE-959-BLOCKING-EVALUATION"
+248-SecRule TX:DETECTION_PARANOIA_LEVEL "@lt 1" "id:959012,phase:4,pass,nolog,tag:'OWASP_CRS',ver:'OWASP_CRS/4.30.0',skipAfter:END-RESPONSE-959-BLOCKING-EVALUATION"
+
+### 913100 definition (phase/action)
+39:    "id:913100,\
+40-    phase:1,\
+41-    block,\
+
+### nginx -T: modsecurity + rate-limit directives actually loaded
+2:load_module modules/ngx_http_modsecurity_module.so;
+140:modsecurity_transaction_id "$request_id";
+163:limit_req_zone $binary_remote_addr zone=general:10m rate=20r/s;
+164:limit_req_zone $login_limit_key    zone=login:10m   rate=6r/m;
+165:limit_req_zone $brute_limit_key    zone=brute:10m   rate=6r/m;
+166:limit_conn_zone $binary_remote_addr zone=perip:10m;
+168:limit_req_status  429;
+169:limit_conn_status 429;
+170:limit_req_log_level  error;   # "limiting requests ... by zone" lines feed fail2ban
+181:    listen 9080 default_server;
+186:        modsecurity off;
+200:    listen 9443 ssl default_server;
+205:    ssl_protocols       TLSv1.2 TLSv1.3;
+222:    limit_conn perip 20;
+223:    limit_req  zone=general burst=40 nodelay;
+227:        modsecurity off;
+234:        limit_req zone=general burst=40 nodelay;
+235:        limit_req zone=login   burst=3  nodelay;
+241:        limit_req zone=general burst=40 nodelay;
+242:        limit_req zone=brute   burst=3  nodelay;
+272:proxy_pass http://dvwa_backend;
+291:  '"limit_req":"$limit_req_status",'
+300:# configuration file /etc/nginx/conf.d/modsecurity.conf:
+301:modsecurity on;
+302:modsecurity_rules_file /etc/modsecurity.d/setup.conf;
+
+### rules loaded
+2026/11/21 06:11:49 [notice] 727#727: ModSecurity-nginx v1.0.4 (rules loaded inline/local/remote: 0/863/0)
+nginx version: nginx/1.30.6

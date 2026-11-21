@@ -1,0 +1,45 @@
+### TLS 1.3 handshake (certificate verified against the lab CA)
+Connecting to 10.66.10.10
+CONNECTION ESTABLISHED
+Protocol version: TLSv1.3
+Ciphersuite: TLS_AES_256_GCM_SHA384
+Peer certificate: C=IN, O=Shield Wall Lab, CN=shieldwall.local
+Hash used: SHA256
+Signature type: ecdsa_secp256r1_sha256
+Verification: OK
+Peer Temp Key: X25519, 253 bits
+DONE
+
+### TLS 1.2 handshake
+Connecting to 10.66.10.10
+CONNECTION ESTABLISHED
+Protocol version: TLSv1.2
+Ciphersuite: ECDHE-ECDSA-AES256-GCM-SHA384
+Peer certificate: C=IN, O=Shield Wall Lab, CN=shieldwall.local
+Hash used: SHA256
+
+### TLS 1.1 must be refused (client allows it via SECLEVEL=0, so the SERVER must answer alert 70 protocol_version)
+CONNECTED(00000003)
+286B855884750000:error:0A00042E:SSL routines:ssl3_read_bytes:tlsv1 alert protocol version:ssl/record/rec_layer_s3.c:918:SSL alert number 70
+
+### TLS 1.0 must be refused (server must answer alert 70 protocol_version)
+CONNECTED(00000003)
+283BB07CAF730000:error:0A00042E:SSL routines:ssl3_read_bytes:tlsv1 alert protocol version:ssl/record/rec_layer_s3.c:918:SSL alert number 70
+
+### HTTP -> HTTPS redirect
+HTTP/1.1 301 Moved Permanently
+Location: https://shieldwall.local:9443/login.php
+
+### Security headers on an HTTPS response
+HTTP/2 200 
+set-cookie: security=low; path=/; Secure; HttpOnly; SameSite=Lax
+set-cookie: PHPSESSID=68e495e698bdb971231eb81c14f08548; expires=Sun, 22 Nov 2026 06:13:47 GMT; Max-Age=86400; path=/; Secure; HttpOnly; SameSite=Lax
+server: shieldwall
+strict-transport-security: max-age=31536000
+x-content-type-options: nosniff
+x-frame-options: SAMEORIGIN
+referrer-policy: same-origin
+permissions-policy: camera=(), microphone=(), geolocation=(), payment=()
+
+### Backend is not reachable from the frontend network (app is only behind the WAF)
+client -> dvwa 10.66.20.20:80 : HTTP 000 (000 = no route: unreachable, as designed)

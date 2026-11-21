@@ -1,0 +1,47 @@
+### nginx limit_req rejections (last 30)
+2026/11/21 06:13:36 [error] 591#591: *351 limiting requests, excess: 40.560 by zone "general", client: 10.66.10.66, server: shieldwall.local, request: "GET /favicon.ico HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:36 [error] 593#593: *353 limiting requests, excess: 40.500 by zone "general", client: 10.66.10.66, server: shieldwall.local, request: "GET /favicon.ico HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:36 [error] 592#592: *349 limiting requests, excess: 40.560 by zone "general", client: 10.66.10.66, server: shieldwall.local, request: "GET /favicon.ico HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:36 [error] 591#591: *352 limiting requests, excess: 40.460 by zone "general", client: 10.66.10.66, server: shieldwall.local, request: "GET /favicon.ico HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:36 [error] 593#593: *354 limiting requests, excess: 40.420 by zone "general", client: 10.66.10.66, server: shieldwall.local, request: "GET /favicon.ico HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:36 [error] 590#590: *355 limiting requests, excess: 40.320 by zone "general", client: 10.66.10.66, server: shieldwall.local, request: "GET /favicon.ico HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:36 [error] 590#590: *356 limiting requests, excess: 40.220 by zone "general", client: 10.66.10.66, server: shieldwall.local, request: "GET /favicon.ico HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:36 [error] 591#591: *358 limiting requests, excess: 40.140 by zone "general", client: 10.66.10.66, server: shieldwall.local, request: "GET /favicon.ico HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:36 [error] 592#592: *361 limiting requests, excess: 40.060 by zone "general", client: 10.66.10.66, server: shieldwall.local, request: "GET /favicon.ico HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:36 [error] 591#591: *357 limiting requests, excess: 41.000 by zone "general", client: 10.66.10.66, server: shieldwall.local, request: "GET /favicon.ico HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:36 [error] 590#590: *364 limiting requests, excess: 40.940 by zone "general", client: 10.66.10.66, server: shieldwall.local, request: "GET /favicon.ico HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:36 [error] 591#591: *359 limiting requests, excess: 41.000 by zone "general", client: 10.66.10.66, server: shieldwall.local, request: "GET /favicon.ico HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:36 [error] 592#592: *362 limiting requests, excess: 40.860 by zone "general", client: 10.66.10.66, server: shieldwall.local, request: "GET /favicon.ico HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:36 [error] 591#591: *360 limiting requests, excess: 41.000 by zone "general", client: 10.66.10.66, server: shieldwall.local, request: "GET /favicon.ico HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:36 [error] 590#590: *365 limiting requests, excess: 40.760 by zone "general", client: 10.66.10.66, server: shieldwall.local, request: "GET /favicon.ico HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:36 [error] 590#590: *366 limiting requests, excess: 40.580 by zone "general", client: 10.66.10.66, server: shieldwall.local, request: "GET /favicon.ico HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:36 [error] 592#592: *367 limiting requests, excess: 40.580 by zone "general", client: 10.66.10.66, server: shieldwall.local, request: "GET /favicon.ico HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:36 [error] 591#591: *369 limiting requests, excess: 40.520 by zone "general", client: 10.66.10.66, server: shieldwall.local, request: "GET /favicon.ico HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:36 [error] 591#591: *370 limiting requests, excess: 40.460 by zone "general", client: 10.66.10.66, server: shieldwall.local, request: "GET /favicon.ico HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:36 [error] 592#592: *368 limiting requests, excess: 40.460 by zone "general", client: 10.66.10.66, server: shieldwall.local, request: "GET /favicon.ico HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:36 [error] 593#593: *371 limiting requests, excess: 40.420 by zone "general", client: 10.66.10.66, server: shieldwall.local, request: "GET /favicon.ico HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:36 [error] 594#594: *372 limiting requests, excess: 40.340 by zone "general", client: 10.66.10.66, server: shieldwall.local, request: "GET /favicon.ico HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:36 [error] 593#593: *373 limiting requests, excess: 40.300 by zone "general", client: 10.66.10.66, server: shieldwall.local, request: "GET /favicon.ico HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:36 [error] 595#595: *374 limiting requests, excess: 40.280 by zone "general", client: 10.66.10.66, server: shieldwall.local, request: "GET /favicon.ico HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:44 [error] 593#593: *385 limiting requests, excess: 3.969 by zone "login", client: 10.66.10.66, server: shieldwall.local, request: "POST /login.php HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:45 [error] 593#593: *387 limiting requests, excess: 3.962 by zone "login", client: 10.66.10.66, server: shieldwall.local, request: "POST /login.php HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:45 [error] 594#594: *389 limiting requests, excess: 3.954 by zone "login", client: 10.66.10.66, server: shieldwall.local, request: "POST /login.php HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:45 [error] 594#594: *392 limiting requests, excess: 3.947 by zone "login", client: 10.66.10.66, server: shieldwall.local, request: "POST /login.php HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:45 [error] 594#594: *394 limiting requests, excess: 3.939 by zone "login", client: 10.66.10.66, server: shieldwall.local, request: "POST /login.php HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:13:45 [error] 594#594: *396 limiting requests, excess: 3.932 by zone "login", client: 10.66.10.66, server: shieldwall.local, request: "POST /login.php HTTP/2.0", host: "shieldwall.local:9443"
+
+### fail2ban jail
+Status for the jail: shieldwall-bruteforce
+|- Filter
+|  |- Currently failed:	1
+|  |- Total failed:	16
+|  `- File list:	/var/log/shieldwall/nginx/error.log
+`- Actions
+   |- Currently banned:	1
+   |- Total banned:	2
+   `- Banned IP list:	10.66.10.66
+
+### iptables in the WAF namespace
+-N f2b-shieldwall-bruteforce
+-A INPUT -p tcp -j f2b-shieldwall-bruteforce
+-A f2b-shieldwall-bruteforce -s 10.66.10.66/32 -j REJECT --reject-with icmp-port-unreachable

@@ -1,0 +1,187 @@
+# =====================================================================
+# Shield Wall log centralization (Vector 0.62)
+#   proxy access log (JSON)        ┐
+#   proxy error log (rate limits)  ├─► normalize ─► logs/central/events.ndjson
+#   ModSecurity audit log (JSON)   │   (one schema for every event)
+#   fail2ban log (bans)            ┘
+# Common schema: ts, source, event_type, client_ip, method, uri, status,
+#                request_id, action, attack_type, mitre, rule_ids, rules, detail
+# =====================================================================
+data_dir: /var/lib/vector
+
+sources:
+  proxy_access:
+    type: file
+    include: [/logs/nginx/access.json]
+    read_from: beginning
+  proxy_error:
+    type: file
+    include: [/logs/nginx/error.log]
+    read_from: beginning
+  waf_audit:
+    type: file
+    include: [/logs/modsec/audit.json]
+    read_from: beginning
+    max_line_bytes: 1048576
+  fail2ban_log:
+    type: file
+    include: [/logs/fail2ban/fail2ban.log]
+    read_from: beginning
+
+transforms:
+  norm_access:
+    type: remap
+    inputs: [proxy_access]
+    drop_on_error: true
+    source: |
+      r = parse_json!(.message)
+      status = to_int(r.status) ?? 0
+      action = "allowed"
+      if status == 403 { action = "blocked_waf" } else if status == 429 { action = "rate_limited" } else if status == 404 && match(string(r.uri) ?? "", r'^/(setup|phpinfo)\.php') { action = "blocked_edge" }
+      . = {
+        "ts": r.ts, "source": "proxy", "event_type": "http_access",
+        "client_ip": r.client_ip, "method": r.method, "uri": r.uri, "status": status,
+        "request_id": r.request_id, "user_agent": r.user_agent, "tls": r.tls,
+        "limit_req": r.limit_req, "upstream_status": r.upstream_status,
+        "request_time": r.request_time, "action": action
+      }
+      if status == 429 { .attack_type = "Brute Force / Rate Limit"; .mitre = "T1110" }
+
+  norm_waf:
+    type: remap
+    inputs: [waf_audit]
+    drop_on_error: true
+    source: |
+      r = parse_json!(.message)
+      tx = object!(r.transaction)
+      msgs = array(tx.messages) ?? []
+      rules = []
+      ids = []
+      tags = []
+      for_each(msgs) -> |_i, m| {
+        d = object(m.details) ?? {}
+        rules = push(rules, {"id": d.ruleId, "msg": m.message, "severity": d.severity, "data": d.data, "tags": d.tags})
+        ids = push(ids, d.ruleId)
+        tags = append(tags, array(d.tags) ?? [])
+      }
+      # Audit entries with no rule match are just non-2xx responses produced by nginx
+      # itself (e.g. 429 from limit_req). They are already covered by the rate_limit events.
+      if length(ids) == 0 { abort }
+      tagstr = encode_json(tags)
+      idstr = encode_json(ids)
+      # Classification: the attack category with the MOST matching rules wins
+      # (one payload often trips several families, e.g. "; cat /etc/passwd" hits RCE
+      # and LFI rules). Ties are broken by the order below. Scanner user agents
+      # override everything, since the tool identity is the dominant signal.
+      c_sqli = 0
+      c_xss = 0
+      c_rce = 0
+      c_lfi = 0
+      c_php = 0
+      c_proto = 0
+      for_each(msgs) -> |_i, m| {
+        d = object(m.details) ?? {}
+        tg = encode_json(d.tags)
+        if contains(tg, "attack-sqli") { c_sqli = c_sqli + 1 }
+        if contains(tg, "attack-xss") { c_xss = c_xss + 1 }
+        if contains(tg, "attack-rce") { c_rce = c_rce + 1 }
+        if contains(tg, "attack-lfi") || contains(tg, "attack-rfi") { c_lfi = c_lfi + 1 }
+        if contains(tg, "attack-injection-php") || contains(tg, "attack-php") { c_php = c_php + 1 }
+        if contains(tg, "attack-protocol") || contains(tg, "attack-generic") || contains(tg, "attack-disclosure") { c_proto = c_proto + 1 }
+      }
+      attack = "Other / Protocol"
+      mitre = "T1190"
+      best = 0
+      if c_sqli > best { best = c_sqli; attack = "SQL Injection" }
+      if c_xss > best { best = c_xss; attack = "Cross-Site Scripting" }
+      if c_lfi > best { best = c_lfi; attack = "Path Traversal / File Inclusion" }
+      if c_rce > best { best = c_rce; attack = "Command Injection" }
+      if c_php > best { best = c_php; attack = "PHP Injection" }
+      if contains(tagstr, "shieldwall/scanner") || contains(tagstr, "attack-reputation-scanner") || match(idstr, r'"913\d{3}"') {
+        attack = "Scanner / Recon"; mitre = "T1595.002"
+      }
+      fams = []
+      if c_sqli > 0 { fams = push(fams, "sqli") }
+      if c_xss > 0 { fams = push(fams, "xss") }
+      if c_lfi > 0 { fams = push(fams, "lfi/rfi") }
+      if c_rce > 0 { fams = push(fams, "rce") }
+      if c_php > 0 { fams = push(fams, "php") }
+      if c_proto > 0 { fams = push(fams, "protocol") }
+      ts = parse_timestamp(string!(tx.time_stamp), format: "%a %b %e %H:%M:%S %Y") ?? now()
+      req = object(tx.request) ?? {}
+      resp = object(tx.response) ?? {}
+      act = "detected"
+      if tx.is_interrupted == true { act = "blocked_waf" }
+      # Response-phase (95xxxx / 959100) hits: on nginx the response is already
+      # streaming, so these are detections (data-leakage alerts), not blocks
+      if !match(idstr, r'"949110"') && match(idstr, r'"95\d{4}"') {
+        act = "outbound_detected"
+        attack = "Data Leakage (response)"
+      }
+      . = {
+        "ts": format_timestamp!(ts, format: "%+"), "source": "waf", "event_type": "waf_alert",
+        "client_ip": tx.client_ip, "method": req.method, "uri": req.uri,
+        "status": resp.http_code, "request_id": tx.unique_id,
+        "action": act,
+        "attack_type": attack, "attack_families": fams, "mitre": mitre, "rule_ids": ids, "rules": rules
+      }
+
+  norm_error:
+    type: remap
+    inputs: [proxy_error]
+    drop_on_error: true
+    source: |
+      m = string!(.message)
+      # ModSecurity lines duplicate the audit log, so drop them here
+      if contains(m, "ModSecurity: ") { abort }
+      p = parse_regex(m, r'^(?P<ts>\d{4}/\d\d/\d\d \d\d:\d\d:\d\d) \[(?P<level>\w+)\] \d+#\d+: \*\d+ limiting requests, excess: (?P<excess>\S+) by zone "(?P<zone>\w+)", client: (?P<ip>[0-9a-fA-F.:]+), server: [^,]*, request: "(?P<request>[^"]*)"') ?? null
+      if p == null {
+        g = parse_regex(m, r'^(?P<ts>\d{4}/\d\d/\d\d \d\d:\d\d:\d\d) \[(?P<level>\w+)\]') ?? {"ts": null, "level": "unknown"}
+        if g.level == "notice" || g.level == "info" { abort }
+        ts = parse_timestamp(string(g.ts) ?? "", format: "%Y/%m/%d %H:%M:%S") ?? now()
+        . = {"ts": format_timestamp!(ts, format: "%+"), "source": "proxy", "event_type": "nginx_error", "detail": m}
+      } else {
+        ts = parse_timestamp!(p.ts, format: "%Y/%m/%d %H:%M:%S")
+        parts = split(string!(p.request), " ")
+        atype = "Flood / Rate Limit"
+        tid = "T1499"
+        if p.zone == "login" || p.zone == "brute" { atype = "Brute Force / Rate Limit"; tid = "T1110" }
+        . = {
+          "ts": format_timestamp!(ts, format: "%+"), "source": "proxy", "event_type": "rate_limit",
+          "client_ip": p.ip, "method": parts[0], "uri": parts[1], "status": 429,
+          "action": "rate_limited", "detail": "zone=" + string!(p.zone) + " excess=" + string!(p.excess),
+          "attack_type": atype,
+          "mitre": tid
+        }
+      }
+
+  norm_fail2ban:
+    type: remap
+    inputs: [fail2ban_log]
+    drop_on_error: true
+    source: |
+      m = string!(.message)
+      p = parse_regex!(m, r'^(?P<ts>\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),\d+ fail2ban\.actions\s+\[\d+\]: (?P<level>\w+)\s+\[(?P<jail>[^\]]+)\] (?P<act>Ban|Unban|Restore Ban) (?P<ip>\S+)')
+      ts = parse_timestamp!(p.ts, format: "%Y-%m-%d %H:%M:%S")
+      atype = "Automated attack (repeated WAF blocks)"
+      tid = "T1190"
+      if p.jail == "shieldwall-bruteforce" { atype = "Brute Force / Rate Limit"; tid = "T1110" }
+      etype = "ban"
+      act = "banned"
+      if p.act == "Unban" { etype = "unban"; act = "unbanned" }
+      . = {
+        "ts": format_timestamp!(ts, format: "%+"), "source": "fail2ban",
+        "event_type": etype,
+        "client_ip": p.ip, "action": act,
+        "detail": "jail=" + string!(p.jail),
+        "attack_type": atype,
+        "mitre": tid
+      }
+
+sinks:
+  central:
+    type: file
+    inputs: [norm_access, norm_waf, norm_error, norm_fail2ban]
+    path: /logs/central/events.ndjson
+    encoding:
+      codec: json

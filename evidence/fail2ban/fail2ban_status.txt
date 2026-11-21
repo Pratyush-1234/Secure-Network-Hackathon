@@ -1,0 +1,29 @@
+Status
+|- Number of jail:	2
+`- Jail list:	shieldwall-bruteforce, shieldwall-waf
+Status for the jail: shieldwall-bruteforce
+|- Filter
+|  |- Currently failed:	1
+|  |- Total failed:	16
+|  `- File list:	/var/log/shieldwall/nginx/error.log
+`- Actions
+   |- Currently banned:	1
+   |- Total banned:	2
+   `- Banned IP list:	10.66.10.66
+Status for the jail: shieldwall-waf
+|- Filter
+|  |- Currently failed:	1
+|  |- Total failed:	60
+|  `- File list:	/var/log/shieldwall/nginx/error.log
+`- Actions
+   |- Currently banned:	0
+   |- Total banned:	0
+   `- Banned IP list:	
+
+### iptables inside the WAF network namespace
+-P INPUT ACCEPT
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+-N f2b-shieldwall-bruteforce
+-A INPUT -p tcp -j f2b-shieldwall-bruteforce
+-A f2b-shieldwall-bruteforce -s 10.66.10.66/32 -j REJECT --reject-with icmp-port-unreachable

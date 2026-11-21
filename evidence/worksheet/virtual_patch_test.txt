@@ -1,0 +1,7 @@
+ip=127.0.0.1%0aid     HTTP 403  rules fired: 10100         app output: 
+ip=127.0.0.1          HTTP 200  rules fired: none          app output: PING 127.0.0.1
+ip=localhost          HTTP 200  rules fired: none          app output: PING localhost
+ip=db                 HTTP 200  rules fired: none          app output: PING db
+
+Paranoia level in effect:
+    setvar:tx.blocking_paranoia_level=2"

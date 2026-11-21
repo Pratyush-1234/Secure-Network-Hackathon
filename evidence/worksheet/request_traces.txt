@@ -1,0 +1,97 @@
+=== TEST: tautology
+--- 1. client (evidence/attack_waf.csv):
+"2026-11-21T06:10:57Z","waf","SQLi","T1190","tautology  1' OR '1'='1","GET","/vulnerabilities/sqli/?id=1' OR '1'='1","403","0.012528","BLOCKED","WAF 403 (ModSecurity, request-id c3868088b1bd9efaf29cd72be8f02e30)"
+--- 2. nginx access log (logs/nginx/access.json) request_id=c3868088b1bd9efaf29cd72be8f02e30:
+{"ts":"2026-11-21T06:10:57+00:00","request_id":"c3868088b1bd9efaf29cd72be8f02e30","client_ip":"10.66.10.66","method":"GET","uri":"/vulnerabilities/sqli/?id=1%27%20OR%20%271%27%3D%271&Submit=Submit","protocol":"HTTP/2.0","status":403,"bytes_sent":146,"request_time":0.000,"upstream_status":"","limit_req":"","tls":"TLSv1.3","host":"shieldwall.local","referer":"","user_agent":"Mozilla/5.0 (X11; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0"}
+--- 3. ModSecurity audit log (logs/modsec/audit.json) unique_id=c3868088b1bd9efaf29cd72be8f02e30:
+{"time":"Sat Nov 21 06:10:57 2026","client":"10.66.10.66","method":"GET","uri":"/vulnerabilities/sqli/?id=1%27%20OR%20%271%27%3D%271&Submit=Submit","ua":null,"status":403,"interrupted":true}
+    rule 932240  sev=2  Remote Command Execution: Unix Command Injection evasion attempt detected  | Matched Data: 1'='1 found within ARGS:id: 1' OR '1'='1
+    rule 942100  sev=2  SQL Injection Attack Detected via libinjection  | Matched Data: s&sos found within ARGS:id: 1' OR '1'='1
+    rule 942130  sev=2  SQL Injection Attack: SQL Boolean-based attack detected  | Matched Data:  '1'='1 found within ARGS:id: 1
+    rule 942180  sev=2  Detects basic SQL authentication bypass attempts 1/3  | Matched Data: '=' found within ARGS:id: 1' OR '1'='1
+    rule 942330  sev=2  Detects classic SQL injection probings 1/3  | Matched Data: ' OR '1 found within ARGS:id: 1' OR '1'='1
+    rule 942370  sev=2  Detects classic SQL injection probings 2/3  | Matched Data: ' OR '1'='1 found within ARGS:id: 1' OR '1'='1
+    rule 942390  sev=2  SQL Injection Attack using (X)OR  | Matched Data: ' OR '1'= found within ARGS:id: 1' OR '1'='1
+    rule 942520  sev=2  Detects basic SQL authentication bypass attempts 4.0/4  | Matched Data: '= found within ARGS:id: 1' OR '1'='1
+    rule 949110  sev=0  Inbound Anomaly Score Exceeded (Total Score: 40)  | 
+--- 4. central event (logs/central/events.ndjson):
+{"source":"waf","event_type":"waf_alert","action":"blocked_waf","attack_type":"SQL Injection","attack_families":["sqli","rce"],"mitre":"T1190","rule_ids":["932240","942100","942130","942180","942330","942370","942390","942520","949110"]}
+
+=== TEST: reflected <script>
+--- 1. client (evidence/attack_waf.csv):
+"2026-11-21T06:10:57Z","waf","XSS","T1190","reflected <script> cookie theft","GET","/vulnerabilities/xss_r/?name=<script>alert(document.cookie)</script>","403","0.011944","BLOCKED","WAF 403 (ModSecurity, request-id b181d4110daa6064a37fcac56903de63)"
+--- 2. nginx access log (logs/nginx/access.json) request_id=b181d4110daa6064a37fcac56903de63:
+{"ts":"2026-11-21T06:10:57+00:00","request_id":"b181d4110daa6064a37fcac56903de63","client_ip":"10.66.10.66","method":"GET","uri":"/vulnerabilities/xss_r/?name=%3Cscript%3Ealert%28document.cookie%29%3C%2Fscript%3E","protocol":"HTTP/2.0","status":403,"bytes_sent":146,"request_time":0.000,"upstream_status":"","limit_req":"","tls":"TLSv1.3","host":"shieldwall.local","referer":"","user_agent":"Mozilla/5.0 (X11; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0"}
+--- 3. ModSecurity audit log (logs/modsec/audit.json) unique_id=b181d4110daa6064a37fcac56903de63:
+{"time":"Sat Nov 21 06:10:57 2026","client":"10.66.10.66","method":"GET","uri":"/vulnerabilities/xss_r/?name=%3Cscript%3Ealert%28document.cookie%29%3C%2Fscript%3E","ua":null,"status":403,"interrupted":true}
+    rule 941100  sev=2  XSS Attack Detected via libinjection  | Matched Data: XSS data found within ARGS:name: <script>alert(document.cookie)</script>
+    rule 941110  sev=2  XSS Filter - Category 1: Script Tag Vector  | Matched Data: <script> found within ARGS:name: <script>alert(document.cookie)</script>
+    rule 941160  sev=2  NoScript XSS InjectionChecker: HTML Injection  | Matched Data: <script found within ARGS:name: <script>alert(document.cookie)</script>
+    rule 941180  sev=2  Node-Validator Deny List Keywords  | Matched Data: document.cookie found within ARGS:name: <script>alert(document.cookie)</script>
+    rule 941390  sev=2  Javascript method detected  | Matched Data: alert( found within ARGS:name: <script>alert(document.cookie)</script>
+    rule 941320  sev=2  Possible XSS Attack Detected - HTML Tag Handler  | Matched Data: <script> found within ARGS:name: <script>alert(document.cookie)</script>
+    rule 942131  sev=2  SQL Injection Attack: SQL Boolean-based attack detected  | Matched Data: script>alert found within ARGS:name: <script>alert(document.cookie)</script>
+    rule 949110  sev=0  Inbound Anomaly Score Exceeded (Total Score: 35)  | 
+--- 4. central event (logs/central/events.ndjson):
+{"source":"waf","event_type":"waf_alert","action":"blocked_waf","attack_type":"Cross-Site Scripting","attack_families":["sqli","xss"],"mitre":"T1190","rule_ids":["941100","941110","941160","941180","941390","941320","942131","949110"]}
+
+=== TEST: stored <img
+--- 1. client (evidence/attack_waf.csv):
+"2026-11-21T06:10:57Z","waf","XSS","T1190","stored <img onerror> guestbook","POST","/vulnerabilities/xss_s/ mtxMessage=<img src=x onerror=alert(1)>","403","0.013510","BLOCKED","WAF 403 (ModSecurity, request-id e053d9d5f55269d4daa06b3466fe2718)"
+--- 2. nginx access log (logs/nginx/access.json) request_id=e053d9d5f55269d4daa06b3466fe2718:
+{"ts":"2026-11-21T06:10:57+00:00","request_id":"e053d9d5f55269d4daa06b3466fe2718","client_ip":"10.66.10.66","method":"POST","uri":"/vulnerabilities/xss_s/","protocol":"HTTP/2.0","status":403,"bytes_sent":146,"request_time":0.000,"upstream_status":"","limit_req":"","tls":"TLSv1.3","host":"shieldwall.local","referer":"","user_agent":"Mozilla/5.0 (X11; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0"}
+--- 3. ModSecurity audit log (logs/modsec/audit.json) unique_id=e053d9d5f55269d4daa06b3466fe2718:
+{"time":"Sat Nov 21 06:10:57 2026","client":"10.66.10.66","method":"POST","uri":"/vulnerabilities/xss_s/","ua":null,"status":403,"interrupted":true}
+    rule 941100  sev=2  XSS Attack Detected via libinjection  | Matched Data: XSS data found within ARGS:mtxMessage: <img src=x onerror=alert(1)>
+    rule 941120  sev=2  XSS Filter - Category 2: Event Handler Vector  | Matched Data:  onerror=a found within ARGS:mtxMessage: <img src=x onerror=alert(1)>
+    rule 941160  sev=2  NoScript XSS InjectionChecker: HTML Injection  | Matched Data: <img  found within ARGS:mtxMessage: <img src=x onerror=alert(1)>
+    rule 941390  sev=2  Javascript method detected  | Matched Data: alert( found within ARGS:mtxMessage: <img src=x onerror=alert(1)>
+    rule 941150  sev=2  XSS Filter - Category 5: Disallowed HTML Attributes  | Matched Data: src= found within ARGS:mtxMessage: <img src=x onerror=alert(1)>
+    rule 941320  sev=2  Possible XSS Attack Detected - HTML Tag Handler  | Matched Data: <img  found within ARGS:mtxMessage: <img src=x onerror=alert(1)>
+    rule 949110  sev=0  Inbound Anomaly Score Exceeded (Total Score: 30)  | 
+--- 4. central event (logs/central/events.ndjson):
+{"source":"waf","event_type":"waf_alert","action":"blocked_waf","attack_type":"Cross-Site Scripting","attack_families":["xss"],"mitre":"T1190","rule_ids":["941100","941120","941160","941390","941150","941320","949110"]}
+
+=== TEST: ../ sequence
+--- 1. client (evidence/attack_waf.csv):
+"2026-11-21T06:10:57Z","waf","PathTraversal","T1190","../ sequence to /etc/passwd","GET","/vulnerabilities/fi/?page=../../../../../../etc/passwd","403","0.011541","BLOCKED","WAF 403 (ModSecurity, request-id 9c7ed5c79ed9552ca63660dc6db84fa4)"
+--- 2. nginx access log (logs/nginx/access.json) request_id=9c7ed5c79ed9552ca63660dc6db84fa4:
+{"ts":"2026-11-21T06:10:57+00:00","request_id":"9c7ed5c79ed9552ca63660dc6db84fa4","client_ip":"10.66.10.66","method":"GET","uri":"/vulnerabilities/fi/?page=../../../../../../etc/passwd","protocol":"HTTP/2.0","status":403,"bytes_sent":146,"request_time":0.000,"upstream_status":"","limit_req":"","tls":"TLSv1.3","host":"shieldwall.local","referer":"","user_agent":"Mozilla/5.0 (X11; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0"}
+--- 3. ModSecurity audit log (logs/modsec/audit.json) unique_id=9c7ed5c79ed9552ca63660dc6db84fa4:
+{"time":"Sat Nov 21 06:10:57 2026","client":"10.66.10.66","method":"GET","uri":"/vulnerabilities/fi/?page=../../../../../../etc/passwd","ua":null,"status":403,"interrupted":true}
+    rule 930100  sev=2  Path Traversal Attack (/../) or (/.../)  | Matched Data: /../ found within ARGS:page: ../../../../../../etc/passwd
+    rule 930110  sev=2  Path Traversal Attack (/../) or (/.../)  | Matched Data: /../ found within REQUEST_URI_RAW: /vulnerabilities/fi/?page=../../../../../../etc/passwd
+    rule 930110  sev=2  Path Traversal Attack (/../) or (/.../)  | Matched Data: ../ found within ARGS:page: ../../../../../../etc/passwd
+    rule 930120  sev=2  OS File Access Attempt  | Matched Data: etc/passwd found within ARGS:page: ../../../../../../etc/passwd
+    rule 932160  sev=2  Remote Command Execution: Unix Shell Code Found  | Matched Data: etc/passwd found within ARGS:page: ../../../../../../etc/passwd
+    rule 932236  sev=2  Remote Command Execution: Unix Command Injection (command without evasion)  | Matched Data: ../../../../../../etc/passwd found within ARGS:page: ../../../../../../etc/passwd
+    rule 949110  sev=0  Inbound Anomaly Score Exceeded (Total Score: 35)  | 
+--- 4. central event (logs/central/events.ndjson):
+{"source":"waf","event_type":"waf_alert","action":"blocked_waf","attack_type":"Path Traversal / File Inclusion","attack_families":["lfi/rfi","rce"],"mitre":"T1190","rule_ids":["930100","930110","930110","930120","932160","932236","949110"]}
+
+=== TEST: ; cat /etc/passwd
+--- 1. client (evidence/attack_waf.csv):
+"2026-11-21T06:10:57Z","waf","CmdInjection","T1190","; cat /etc/passwd","POST","/vulnerabilities/exec/ ip=127.0.0.1; cat /etc/passwd","403","0.013604","BLOCKED","WAF 403 (ModSecurity, request-id cbed274657a263cad6a638daf0a59daa)"
+--- 2. nginx access log (logs/nginx/access.json) request_id=cbed274657a263cad6a638daf0a59daa:
+{"ts":"2026-11-21T06:10:57+00:00","request_id":"cbed274657a263cad6a638daf0a59daa","client_ip":"10.66.10.66","method":"POST","uri":"/vulnerabilities/exec/","protocol":"HTTP/2.0","status":403,"bytes_sent":146,"request_time":0.000,"upstream_status":"","limit_req":"","tls":"TLSv1.3","host":"shieldwall.local","referer":"","user_agent":"Mozilla/5.0 (X11; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0"}
+--- 3. ModSecurity audit log (logs/modsec/audit.json) unique_id=cbed274657a263cad6a638daf0a59daa:
+{"time":"Sat Nov 21 06:10:57 2026","client":"10.66.10.66","method":"POST","uri":"/vulnerabilities/exec/","ua":null,"status":403,"interrupted":true}
+    rule 930120  sev=2  OS File Access Attempt  | Matched Data: etc/passwd found within ARGS:ip: 127.0.0.1; cat /etc/passwd
+    rule 932160  sev=2  Remote Command Execution: Unix Shell Code Found  | Matched Data: etc/passwd found within ARGS:ip: 127.0.0.1 cat/etc/passwd
+    rule 932236  sev=2  Remote Command Execution: Unix Command Injection (command without evasion)  | Matched Data: ; cat  found within ARGS:ip: 127.0.0.1; cat /etc/passwd
+    rule 949110  sev=0  Inbound Anomaly Score Exceeded (Total Score: 15)  | 
+--- 4. central event (logs/central/events.ndjson):
+{"source":"waf","event_type":"waf_alert","action":"blocked_waf","attack_type":"Command Injection","attack_families":["lfi/rfi","rce"],"mitre":"T1190","rule_ids":["930120","932160","932236","949110"]}
+
+=== TEST: UA: sqlmap
+--- 1. client (evidence/attack_waf.csv):
+"2026-11-21T06:10:57Z","waf","ScannerUA","T1595.002","UA: sqlmap/1.10.11#stable (https:/","GET","/index.php  [User-Agent: sqlmap/1.10.11#stable (https://sqlmap.org)]","403","0.009875","BLOCKED","WAF 403 (ModSecurity, request-id db72bf1a83dae2c6aa7d103c002fc90e)"
+--- 2. nginx access log (logs/nginx/access.json) request_id=db72bf1a83dae2c6aa7d103c002fc90e:
+{"ts":"2026-11-21T06:10:57+00:00","request_id":"db72bf1a83dae2c6aa7d103c002fc90e","client_ip":"10.66.10.66","method":"GET","uri":"/index.php","protocol":"HTTP/2.0","status":403,"bytes_sent":146,"request_time":0.000,"upstream_status":"","limit_req":"","tls":"TLSv1.3","host":"shieldwall.local","referer":"","user_agent":"sqlmap/1.10.11#stable (https://sqlmap.org)"}
+--- 3. ModSecurity audit log (logs/modsec/audit.json) unique_id=db72bf1a83dae2c6aa7d103c002fc90e:
+{"time":"Sat Nov 21 06:10:57 2026","client":"10.66.10.66","method":"GET","uri":"/index.php","ua":null,"status":403,"interrupted":true}
+    rule 913100  sev=2  Found User-Agent associated with security scanner  | Matched Data: sqlmap found within REQUEST_HEADERS:user-agent: sqlmap/1.10.11#stable (https://sqlmap.org)
+    rule 10200  sev=2  Shield Wall: attack tool / vulnerability scanner user agent  | Matched Data: sqlmap/1.10.11#stable (https://sqlmap.org) found within REQUEST_HEADERS:user-agent
+--- 4. central event (logs/central/events.ndjson):
+{"source":"waf","event_type":"waf_alert","action":"blocked_waf","attack_type":"Scanner / Recon","attack_families":[],"mitre":"T1595.002","rule_ids":["913100","10200"]}
+

@@ -1,0 +1,39 @@
+# =====================================================================
+# Shield Wall automatic blocking (fail2ban 1.1.1)
+# fail2ban runs inside the WAF container's network namespace, so these bans
+# drop the attacker at the edge. The host firewall is never touched.
+# =====================================================================
+[DEFAULT]
+ignoreip  = 127.0.0.1/8 ::1
+banaction = iptables-allports
+backend   = polling
+# REJECT with icmp-port-unreachable: banned clients get an immediate "connection refused"
+blocktype = REJECT --reject-with icmp-port-unreachable
+
+# ---------------------------------------------------------------------
+# T1110 Brute Force: nginx rejected login attempts with 429 (limit_req zones
+# "login" and "brute", 6 attempts/min, burst 3). After 5 rejections in 60 s
+# the source IP is banned for 10 minutes on every port of the edge.
+# ---------------------------------------------------------------------
+[shieldwall-bruteforce]
+enabled  = true
+filter   = shieldwall-limit-req
+logpath  = /var/log/shieldwall/nginx/error.log
+maxretry = 5
+findtime = 60
+bantime  = 600
+
+# ---------------------------------------------------------------------
+# T1190 / T1595.002: a client that keeps hitting the WAF (many ModSecurity
+# denies in a short window) is an automated scanner or exploit tool, so it
+# gets banned. The threshold sits well above the number of blocked requests
+# in one scripted attack replay, so each attack class can still be shown
+# being blocked by the WAF itself.
+# ---------------------------------------------------------------------
+[shieldwall-waf]
+enabled  = true
+filter   = shieldwall-modsec
+logpath  = /var/log/shieldwall/nginx/error.log
+maxretry = 100
+findtime = 120
+bantime  = 900

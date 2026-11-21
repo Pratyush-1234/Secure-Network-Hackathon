@@ -1,0 +1,8 @@
+# private keys (regenerate with certs/gen-certs.sh)
+certs/*.key
+# runtime state
+fail2ban/db/
+logs/*/*
+!logs/*/.gitkeep
+.env
+.env

@@ -1,0 +1,59 @@
+=== Brute-force burst: client view (evidence/attack_waf.csv)
+"attempt 1 pw=123456","302","ALLOWED-BURST","wrong password inside the burst allowance"
+"attempt 2 pw=password1","302","ALLOWED-BURST","wrong password inside the burst allowance"
+"attempt 3 pw=letmein","429","BLOCKED","nginx rate limit 429"
+"attempt 4 pw=qwerty","429","BLOCKED","nginx rate limit 429"
+"attempt 5 pw=admin","429","BLOCKED","nginx rate limit 429"
+"attempt 6 pw=welcome","429","BLOCKED","nginx rate limit 429"
+"attempt 7 pw=monkey","429","BLOCKED","nginx rate limit 429"
+"attempt 8 pw=dragon","429","BLOCKED","nginx rate limit 429"
+"attempt 9 pw=iloveyou","429","BLOCKED","nginx rate limit 429"
+"attempt 10 pw=abc123","429","BLOCKED","nginx rate limit 429"
+"attempt 11 pw=111111","429","BLOCKED","nginx rate limit 429"
+"attempt 12 pw=password","429","BLOCKED","nginx rate limit 429"
+"auto-ban check","000","BANNED","fail2ban ban active after 2s: connection refused"
+"burst verdict","-","BLOCKED (burst cut off by rate limit, correct password never reached the app
+
+=== nginx access log: POST /login.php from attacker (status, limit_req)
+{"ts":"2026-11-21T06:10:58+00:00","request_id":"b12389a1bafe0052af9430e5ae9db5a6","status":302,"limit_req":"PASSED","upstream_status":"302"}
+{"ts":"2026-11-21T06:10:58+00:00","request_id":"3923ed6f290717ee049bfdc341877b4a","status":302,"limit_req":"PASSED","upstream_status":"302"}
+{"ts":"2026-11-21T06:10:58+00:00","request_id":"29c0909ed3ae74018207e43cffce3018","status":429,"limit_req":"REJECTED","upstream_status":""}
+{"ts":"2026-11-21T06:10:58+00:00","request_id":"75ff33d8daf166c8ba38e63ddc48717b","status":429,"limit_req":"REJECTED","upstream_status":""}
+{"ts":"2026-11-21T06:10:58+00:00","request_id":"b8e6c2e27140007116146b0e5323efad","status":429,"limit_req":"REJECTED","upstream_status":""}
+{"ts":"2026-11-21T06:10:58+00:00","request_id":"7070983e10310357c526982a79ca3408","status":429,"limit_req":"REJECTED","upstream_status":""}
+{"ts":"2026-11-21T06:10:58+00:00","request_id":"b21f341344c0ea6f0de9065698ed860c","status":429,"limit_req":"REJECTED","upstream_status":""}
+{"ts":"2026-11-21T06:10:58+00:00","request_id":"05c2f9e0f2bdec7e0b0355958eb223a6","status":429,"limit_req":"REJECTED","upstream_status":""}
+{"ts":"2026-11-21T06:10:58+00:00","request_id":"3069c4351a4f15301a757073288518bf","status":429,"limit_req":"REJECTED","upstream_status":""}
+{"ts":"2026-11-21T06:10:58+00:00","request_id":"f6678bf0cde46f08cfabf3575697ecbd","status":429,"limit_req":"REJECTED","upstream_status":""}
+{"ts":"2026-11-21T06:10:58+00:00","request_id":"6f307bf1781802156804d0d1d28687ca","status":429,"limit_req":"REJECTED","upstream_status":""}
+{"ts":"2026-11-21T06:10:59+00:00","request_id":"b63b725e411d6651ffaf0b2c197ce3ef","status":429,"limit_req":"REJECTED","upstream_status":""}
+
+=== nginx error log: limit_req rejections
+2026/11/21 06:10:58 [error] 596#596: *138 limiting requests, excess: 3.683 by zone "login", client: 10.66.10.66, server: shieldwall.local, request: "POST /login.php HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:10:58 [error] 596#596: *140 limiting requests, excess: 3.674 by zone "login", client: 10.66.10.66, server: shieldwall.local, request: "POST /login.php HTTP/2.0", host: "shieldwall.local:9443"
+2026/11/21 06:10:58 [error] 596#596: *142 limiting requests, excess: 3.665 by zone "login", client: 10.66.10.66, server: shieldwall.local, request: "POST /login.php HTTP/2.0", host: "shieldwall.local:9443"
+  ... total: 10
+
+=== fail2ban log
+2026-11-21 06:10:58,599 fail2ban.filter         [1]: INFO    [shieldwall-bruteforce] Found 10.66.10.66 - 2026-11-21 06:10:58
+2026-11-21 06:10:58,800 fail2ban.filter         [1]: INFO    [shieldwall-bruteforce] Found 10.66.10.66 - 2026-11-21 06:10:58
+2026-11-21 06:10:58,800 fail2ban.filter         [1]: INFO    [shieldwall-bruteforce] Found 10.66.10.66 - 2026-11-21 06:10:58
+2026-11-21 06:10:59,001 fail2ban.filter         [1]: INFO    [shieldwall-bruteforce] Found 10.66.10.66 - 2026-11-21 06:10:58
+2026-11-21 06:10:59,001 fail2ban.filter         [1]: INFO    [shieldwall-bruteforce] Found 10.66.10.66 - 2026-11-21 06:10:58
+2026-11-21 06:10:59,001 fail2ban.filter         [1]: INFO    [shieldwall-bruteforce] Found 10.66.10.66 - 2026-11-21 06:10:58
+2026-11-21 06:10:59,202 fail2ban.filter         [1]: INFO    [shieldwall-bruteforce] Found 10.66.10.66 - 2026-11-21 06:10:59
+2026-11-21 06:10:59,384 fail2ban.actions        [1]: NOTICE  [shieldwall-bruteforce] Ban 10.66.10.66
+
+=== iptables in WAF netns
+-N f2b-shieldwall-bruteforce
+-A INPUT -p tcp -j f2b-shieldwall-bruteforce
+-A f2b-shieldwall-bruteforce -s 10.66.10.66/32 -j REJECT --reject-with icmp-port-unreachable
+-A f2b-shieldwall-bruteforce -j RETURN
+
+=== central events for brute force
+{"ts":"2026-11-21T06:10:58+00:00","source":"proxy","event_type":"http_access","action":"rate_limited","client_ip":"10.66.10.66","uri":"/login.php","detail":null}
+{"ts":"2026-11-21T06:10:58+00:00","source":"proxy","event_type":"rate_limit","action":"rate_limited","client_ip":"10.66.10.66","uri":"/login.php","detail":"zone=login excess=3.615"}
+{"ts":"2026-11-21T06:10:58+00:00","source":"proxy","event_type":"rate_limit","action":"rate_limited","client_ip":"10.66.10.66","uri":"/login.php","detail":"zone=login excess=3.624"}
+{"ts":"2026-11-21T06:10:58+00:00","source":"proxy","event_type":"rate_limit","action":"rate_limited","client_ip":"10.66.10.66","uri":"/login.php","detail":"zone=login excess=3.632"}
+{"ts":"2026-11-21T06:10:58+00:00","source":"proxy","event_type":"rate_limit","action":"rate_limited","client_ip":"10.66.10.66","uri":"/login.php","detail":"zone=login excess=3.640"}
+  ... rate_limit events: 10, ban events: 1

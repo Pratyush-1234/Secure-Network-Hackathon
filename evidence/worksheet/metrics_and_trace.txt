@@ -1,0 +1,40 @@
+=== Attack script (evidence/attack_waf.csv), clean make test run
+rows by verdict:
+      2 ALLOWED-BURST
+      1 BANNED
+     25 BLOCKED
+      1 BLOCKED (burst cut off by rate limit, correct password never reached the app, source IP auto-banned)
+HTTP codes of the 27 attack requests (15 payloads + 12 brute attempts):
+      2 302
+     15 403
+     10 429
+
+=== Benign script (evidence/benign_waf.csv)
+     37 allowed=yes functional=yes" code=200
+      4 allowed=yes functional=yes" code=302
+
+=== Judge variations (evidence/judge_variations.csv)
+     44 BLOCKED"
+
+=== Cross-check from the RAW logs (not the scripts)
+attacker 10.66.10.66 statuses in nginx access log:
+     23 200
+      1 301
+      8 302
+      1 400
+     60 403
+     10 429
+benign client 10.66.10.20 statuses in nginx access log:
+     40 200
+      4 302
+ModSecurity audit entries for benign client: 0
+ModSecurity interrupted transactions for attacker: 60
+
+=== Trace one alert-summary row back to raw logs: 'Path Traversal / File Inclusion'
+| Path Traversal / File Inclusion | 10 | 0 | 0 | 1 | T1190 | CWE-22 | CAPEC-126 | 930110, 930120, 930100, 932160 | 06:10:55 | 06:10:57 |
+recount from central log:
+10
+request_ids -> audit log (first 3):
+{"unique_id":"068417fb211aa9972b84a8542bfd7c1d","uri":"/vulnerabilities/fi/?page=..%5c..%5c..%5c..%5cetc%5cpasswd&Submit=Subm","interrupted":true,"rules":["930100","930110","930110","930120","932240","949110"]}
+{"unique_id":"1eddcb4cd27bd391faa374cf381a5819","uri":"/vulnerabilities/fi/?page=%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpa","interrupted":true,"rules":["930100","930110","930110","930120","932160","932236","949110"]}
+{"unique_id":"f5956ec658087d5d5fb6f355f227e4e8","uri":"/vulnerabilities/fi/?page=%252e%252e%252f%252e%252e%252fetc%252fpasswd","interrupted":true,"rules":["920230","930100","930110","930120","949110"]}

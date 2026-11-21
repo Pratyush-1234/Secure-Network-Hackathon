@@ -1,0 +1,10 @@
+normal POST 1 -> 200
+normal POST 2 -> 200
+normal POST 3 -> 200
+normal POST 4 -> 200
+bucket empty + scanner UA (ModSecurity phase 1)  -> 403
+bucket empty + SQLi in body (ModSecurity phase 2) -> 403
+bucket empty + normal POST                     -> 429
+GET /setup.php (clean)              -> 404
+GET /setup.php + scanner UA         -> 403
+GET /setup.php + SQLi in query      -> 404

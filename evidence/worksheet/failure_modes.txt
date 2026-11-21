@@ -1,0 +1,20 @@
+### 1) DVWA (app) container stopped, request through the WAF
+ Container shieldwall-dvwa-1 Stopped 
+06:07:30
+host -> https://localhost:9443/login.php : HTTP 504 after 5.012692s
+2026/11/21 06:07:35 [error] 597#597: *1269 upstream timed out (110: Connection timed out) while connecting to upstream, client: 10.66.10.1, server: shieldwall.local, request: "GET /login.php HTTP/2.0", upstream: "http://10.66.20.20:80/login.php", host: "localh
+2026/11/21 06:07:35 [error] 597#597: *1269 [client 10.66.10.1] ModSecurity: Access denied with code 403 (phase 4). Matched "Operator `Ge' with parameter `4' against variable `TX:BLOCKING_OUTBOUND_ANOMALY_SCORE' (Value: `4' ) [file "/etc/modsecurity.d/owasp-crs
+2026/11/21 06:07:35 [alert] 597#597: *1269 header already sent while sending to client, client: 10.66.10.1, server: shieldwall.local, request: "GET /login.php HTTP/2.0", upstream: "http://10.66.20.20:80/login.php", host: "localhost:9443"
+ Container shieldwall-dvwa-1 Started 
+after restart: HTTP 200
+
+### 2) WAF (proxy) container stopped
+ Container shieldwall-waf-1 Stopped 
+host -> https://localhost:9443 : HTTP 000
+curl exit code: 7
+== Shield Wall attack replay: mode=waf target=https://shieldwall.local:9443 ==
+ABORT: https://shieldwall.local:9443 is not reachable (timeout: curl: (28) Connection timed out after 5001 milliseconds ). Is the lab up? ('make status')
+attack.sh exit: 0
+ Container shieldwall-waf-1 Started 
+ Container shieldwall-fail2ban-1 Started 
+after restart: HTTP 200
